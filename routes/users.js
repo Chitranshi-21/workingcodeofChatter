@@ -119,6 +119,8 @@ router.get('/JoinQuery',(request, response) => {
      //login Page Else     
      else
          {
+           console.log('inside else');
+           errors.push({msg: 'You are not registered'});
            response.render('login',{errors});
         }
        
