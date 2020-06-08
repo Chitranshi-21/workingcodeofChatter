@@ -33,10 +33,9 @@ app.use(expressLayouts);
 //Routes
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
-app.get('/chatter', function(req, res) {
-  res.sendFile('index.html');
-});
-users = [];
+/*app.get('/chatter', function(req, res) {
+  res.sendFile('D:\cloudinaryCodeAdded-master' + '/index,html');
+});users = [];
 io.on('connection', function(socket) {
    console.log('A user connected');
    socket.on('setUsername', function(data) {
@@ -56,6 +55,7 @@ io.on('connection', function(socket) {
    })
 });
 
+*/
 const PORT =process.env.PORT || 8000;
 
 app.listen(PORT, console.log('Server started on port : ' + PORT))

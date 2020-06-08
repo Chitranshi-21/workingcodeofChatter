@@ -4,7 +4,13 @@ const pool = require('../db/dbConfig');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const nodemailer = require('nodemailer');
+const format = require('pg-format');
 const log = console.log;
+var http = require('http').Server(app);
+var io = require('socket.io')(http);
+var app = express();
+
+
 
 /* GET users listing. */
 router.get('/', function(req, res, next) {
@@ -29,108 +35,276 @@ router.get('/JoinQuery',(request, response) => {
     response.render('welcome.ejs');
   })  
 
+  //Multiple rows insertion
+
+  router.get('/testInsert',(request, response) => {
+    response.render('multipleRowsForm.ejs');
+  })
+
+  router.post('/postTestInsert',(request, response) => {
+
+    let itFormResult = request.body;
+    console.log('itFormResult  '+JSON.stringify(itFormResult));
+
+    let numberOfRows, lstContact= [];
+    if(typeof(itFormResult.quantity) != 'object')
+    {
+            let singleItProductRecordValue = [];
+            singleItProductRecordValue.push(itFormResult.firstName);
+            singleItProductRecordValue.push(itFormResult.lastName);
+            singleItProductRecordValue.push(itFormResult.email);
+            singleItProductRecordValue.push(itFormResult.password);
+            lstContact.push(singleItProductRecordValue);
+    }
+    else
+    {
+        numberOfRows = itFormResult.quantity.length;
+        console.log('rowCount= '+numberOfRows);
+        for(let i=0; i< numberOfRows ; i++)
+        {
+            let singleItProductRecordValue = [];
+            singleItProductRecordValue.push(itFormResult.firstName[i]);
+            singleItProductRecordValue.push(itFormResult.lastName[i]);
+            singleItProductRecordValue.push(itFormResult.email[i]);
+            singleItProductRecordValue.push(itFormResult.password[i]);
+            lstContact.push(singleItProductRecordValue);
+        }
+        console.log('lstContact '+lstContact);
+    }
+
+    console.log('lstContact  '+JSON.stringify(lstContact));
+
+    const contactQuery = format('INSERT INTO salesforce.Contact (firstName,lastname,email, password__c ) values %L returning id',lstContact);
+    console.log(contactQuery);
+    pool.query(contactQuery)
+    .then((contactQueryResult) => {
+        console.log('contactQueryresult  : '+JSON.stringify(contactQueryResult.rows));
+        response.send('Saved Successfully !');
+    })
+    .catch((
+contactQueryError) => {
+        console.log('contactQueryError  : '+contactQueryError.stack);
+        response.send('Error Occurred !');
+    })
+ 
+    
+});
+
+  router.get('/multipleRows',(request, response) => {
+    
+    console.log('Inside Multiple Rows Insert Method');
+    let lstContact= [];
+    let contactObjectValue1 = [];
+    let contactObjectValue2 = [];
+    contactObjectValue1.push(['diksha', 'bansal', 'dbansal@kloudrac.com', 'dbansal123']);
+    lstContact.push(contactObjectValue1)
+    contactObjectValue2.push(['riyansh', 'sharma', 'rsharma@kloudrac.com', 'rsharma123']);
+    lstContact.push(contactObjectValue2);
+    
+    const contactInsertQuery = format('INSERT INTO salesforce.Contact (firstname,  ,email, password__c) values %L returning id',lstContact);
+    console.log(contactInsertQuery);
+    pool.query(contactInsertQuery)
+    .then((contactInsertQueryResult) => {
+        console.log('contactInsertQueryResult  : '+JSON.stringify(contactInsertQueryResult.rows));
+        response.send('Saved Successfully !');
+    })
+    .catch((contactInsertQueryError) => {
+      console.log('contactInsertQueryError  : '+contactInsertQueryError.stack);
+      response.send('Error Occurred !');
+    })
+        
+});
+
+
 //Login Page
         router.get('/login',(request, response) => {
         response.render('login.ejs');
              })
 
-
-             router.post('/loginPost',async (request, response) => {
+       router.post('/loginPost',async (request, response) => 
+       {
   
-              const {email, password} = request.body;
-              console.log('email : '+email+' passoword '+password);
+                const {email, password} = request.body;
+                console.log('email : '+email+' passoword '+password);
+                let errors = [], userId, objUser, isUserExist = false;
             
-              let errors = [], userId, objUser, isUserExist = false;
+                   if (!email || !password)
+                     {
+                        errors.push({ msg: 'Please enter all fields' });
+                        response.render('login',{errors});
+                     }
             
-                if (!email || !password) {
-                 errors.push({ msg: 'Please enter all fields' });
-                 response.render('login',{errors});
-                  }
-            
-                 await
-                 pool
-                .query('SELECT Id, sfid,name, email FROM salesforce.Contact WHERE email = $1 AND password__c = $2',[email,password])
-                .then((loginResult) => {
-                 console.log('loginResult.rows[0]  '+JSON.stringify(loginResult.rows[0]));
-                  if(loginResult.rowCount > 0 )
-                   {
-                      userId = loginResult.rows[0].sfid;
-                      objUser = loginResult.rows[0];
-                     // isUserExist = true;
-                      if(errors.length == 0){
-                        const token = jwt.sign({ user : objUser }, process.env.TOKEN_SECRET, {
-                          expiresIn: 8640000 // expires in 24 hours
-                        });
-                          response.cookie('jwt',token, { httpOnly: false, secure: false, maxAge: 3600000 });
-                          response.header('auth-token', token).render('dashboard.ejs',{objUser}); 
-  //Contact Info Page
-
-             router.get('/ContactInfo',async (request, response) => {
-                await
-                pool
-            .query('SELECT sfid, name, Email, Phone, MailingPostalCode FROM salesforce.Contact WHERE email = $1 ',[email])
-            .then((contactQueryResult) => {
-             console.log('contactQueryResult.rows[0]  '+JSON.stringify(contactQueryResult.rows[0]));
-                if(contactQueryResult.rowCount > 0 )
-                {
-                  userId = contactQueryResult.rows[0].sfid;
-                  objUser2 = contactQueryResult.rows[0];
-                   response.render('contactInfoForm.ejs',{objUser2});
-                  }})
-                  .catch((InfoError) =>{
-                   console.log('InfoError   :  '+InfoError.stack);
-                    isUserExist = false;
-                    }); 
-                  });
-
- //Contact Update
-
-             router.post('/postUpdate',async (request, response) => {
-               
-              let body = request.body;
-              userId = body.sfid;
-              console.log('body  '+JSON.stringify(body));
-          const { name, email, phone, pincode, user} = request.body;
-          console.log('name inside ' +name);
-          let contactUpdateQuery = 'UPDATE salesforce.Contact SET '+
-          'name = \''+name+'\', '+
-          'email = \''+email+'\' , '+
-          'phone = \''+phone+'\' , '+
-          'MailingPostalCode = \''+pincode+'\' '+
-          'WHERE sfid = $1';
-         console.log('contactUpdateQuery  '+contactUpdateQuery);       
-         await
+                   await
                    pool
-                   .query(contactUpdateQuery,[userId])
-                   .then((contactUpdateQueryResult)=>{
-                     console.log('contactUpdateQueryResult.rows : '+JSON.stringify(contactUpdateQueryResult));
-                       /******* Successfully  Updated*/
-                       response.redirect('/users/dashboard.ejs');
-                   })
-                   .catch((contactUpdateQueryError)=> {
-                     console.log('contactUpdateQueryError '+contactUpdateQueryError);
-                     response.render('contactInfoForm.ejs');
-                   })  
+                  .query('SELECT Id, sfid,name, email FROM salesforce.Contact WHERE email = $1 AND password__c = $2',[email,password])
+                  .then((loginResult) => {
+                  console.log('loginResult.rows[0]  '+JSON.stringify(loginResult.rows[0]));
+                      if(loginResult.rowCount > 0 )
+                         {
+                           userId = loginResult.rows[0].sfid;
+                           objUser = loginResult.rows[0];
+                     // isUserExist = true;
+                              if(errors.length == 0)
+                                 {
+                                     const token = jwt.sign({ user : objUser }, process.env.TOKEN_SECRET, 
+                                         {
+                                    expiresIn: 8640000 // expires in 24 hours
+                                         });
+                                    response.cookie('jwt',token, { httpOnly: false, secure: false, maxAge: 5600000 });
+                                    response.header('auth-token', token).render('dashboard.ejs',{objUser}); 
+  
+                                    //Contact Info Page
 
-                  })
-         
+                                     router.get('/ContactInfo',async (request, response) => 
+                                      {
+                                        await
+                                        pool
+                                        .query('SELECT sfid, name, Email, Phone, Title FROM salesforce.Contact WHERE email = $1 ',[email])
+                                        .then((contactQueryResult) => {
+                                        console.log('contactQueryResult.rows[0]  '+JSON.stringify(contactQueryResult.rows[0]));
+                                            if(contactQueryResult.rowCount > 0 )
+                                                   {
+                                                     userId = contactQueryResult.rows[0].sfid;
+                                                     objUser2 = contactQueryResult.rows[0];
+                                                    response.render('contactInfoForm.ejs',{objUser2});
+                                                    }})
+                                         .catch((InfoError) =>
+                                              {
+                                              console.log('InfoError   :  '+InfoError.stack);
+                                              }); 
+                                         });
+                                         //End of Contact info
+
+                                    //Contact Update
+                                     router.post('/postUpdate',async (request, response) => 
+                                     {
+                                        let body = request.body;
+                                        userId = body.sfid;
+                                        console.log('body  '+JSON.stringify(body));
+                                        const { name, email, phone, title, user} = request.body;
+                                        console.log('name inside ' +name);
+                                       let contactUpdateQuery = 'UPDATE salesforce.contact SET '+
+                                        'name = \''+name+'\', '+
+                                        'email = \''+email+'\' , '+
+                                        'phone = \''+phone+'\' , '+
+                                        'title = \''+title+'\' '+
+                                        'WHERE sfid = $1';
+                                         console.log('contactUpdateQuery  '+contactUpdateQuery);       
+                                         await
+                                          pool
+                                          .query(contactUpdateQuery,[user])
+                                          .then((contactUpdateQueryResult)=>
+                                                          {
+                                          console.log('contactUpdateQueryResult.rows : '+JSON.stringify(contactUpdateQueryResult));
+                                      /******* Successfully  Updated*/
+                                          response.render('dashboard.ejs');
+                                                         })
+                                         .catch((contactUpdateQueryError)=> {
+                                          console.log('contactUpdateQueryError '+contactUpdateQueryError);
+                                          response.render('contactInfoForm.ejs');
+                                                                           })  
+
+                                       })
+                                        //chatter.ejs
+
+                                       router.get('/chatter2',async (request, response) => {
+                                        await
+                                        pool
+                                        .query('SELECT sfid, name FROM salesforce.Contact WHERE email = $1 ',[email])
+                                        .then((contactQueryResult) => {
+                                        console.log('contactQueryResult.rows[0]  '+JSON.stringify(contactQueryResult.rows[0]));
+                                                 if(contactQueryResult.rowCount > 0 )
+                                                     {
+                                                       userId = contactQueryResult.rows[0].sfid;
+                                                       objUser3 = contactQueryResult.rows[0];
+                                                      response.render('chatter.ejs',{objUser3});
+                                                     }})
+                                         .catch((InfoError) =>
+                                              {
+                                              console.log('InfoError   :  '+InfoError.stack);
+                                             }); 
+                                                                                     }) 
+                                       router.post('/postchatter',async (request,response) =>
+                                      {
+                                       let body = request.body;
+                                       console.log('body  '+JSON.stringify(body));
+                                       let { name, content} = request.body;
+                                       let errors =[];
+                                       await
+                                       pool
+                                      .query('INSERT into salesforce.Post__c (name, content__c, Posted_By__c ) values ($1, $2, $3) returning *',[name,content,userId])
+                                      .then((postQueryResult) => {
+                                      console.log('postQueryResult : '+JSON.stringify(postQueryResult));
+                                                                 })
+                                      .catch((postQueryResult)=>
+                                      {
+                                        console.log('postQueryResult  : '+postQueryResult);  
+                                      });
+
+                                      await
+                                      pool
+                                     .query('SELECT Id, sfid,name, content__c FROM salesforce.post__c')
+                                     .then((postResult) => 
+                                        {
+                                     if(postResult.rowCount > 0 )
+                                      {
+                                       userId = postResult.rows[0].sfid;
+                                       objPost = postResult.rows[0];
+                                        console.log('postResult : '+JSON.stringify(postResult.rows));
+                                       response.render('chatter2.ejs',{objPost}); 
+                                      }
+                                     else
+                                      {
+                                       response.render('chatter',{errors});
+                                      }
+                                        })
+                                    .catch((postResult)=>
+                                       {
+                                         response.send(postResult);
+                                       })
+                                     })
              
-          }
+                                   }
      //login Page Else     
-     else
-         {
-           console.log('inside else');
-           errors.push({msg: 'You are not registered'});
-           response.render('login',{errors});
-        }
-       
-       }})
+                                 if (errors.length != 0)
+                                  {
+                                    console.log('inside else');
+                                    errors.push({msg: 'You are not registered'});
+                                    response.render('login',{errors});
+                                   }
+                       }})
         .catch((loginError) =>{
          console.log('loginError   :  '+loginError.stack);
           isUserExist = false;
           });
   
         });
+
+    //chatter
+
+    router.get('/chatter',(req,res) => {
+      res.render('socketFile.ejs');
+    })
+
+      
+      io.on('connection', (socket) => {
+
+        console.log('made socket connection', socket.id);
+    
+        // Handle chat event
+        socket.on('chat', function(data){
+            // console.log(data);
+            io.sockets.emit('chat', data);
+        });
+    
+        // Handle typing event
+        socket.on('typing', function(data){
+            socket.broadcast.emit('typing', data);
+        });
+      })
+
+   
+
      
 //Forgot Passowrd
 
@@ -261,51 +435,7 @@ router.post('/send',(request, response) => {
   
            })
 
-//chatter.ejs
 
-        router.get('/chatter',(request, response) => {
-          response.render('chatter.ejs');
-        }) 
-      router.post('/postchatter',async (request,response) => {
-          let body = request.body;
-          console.log('body  '+JSON.stringify(body));
-          let { name, content} = request.body;
-          
-          let errors =[];
-          await
-          pool
-            .query('INSERT into salesforce.post__c (name, description__c ) values ($1, $2) returning *',[name,content])
-            .then((postQueryResult) => {
-            console.log('postQueryResult : '+JSON.stringify(postQueryResult));
-            })
-            .catch((postQueryResult)=>{
-            console.log('postQueryResult  : '+postQueryResult);  
-            });
-
-            await
-           pool
-           .query('SELECT Id, sfid,name, Description__c FROM salesforce.post__c')
-           .then((postResult) => {
-        
-           if(postResult.rowCount > 0 )
-           {
-             userId = postResult.rows[0].sfid;
-             objPost = postResult.rows[0];
-             console.log('postResult : '+JSON.stringify(postResult.rows));
-                 response.render('chatter2.ejs',{objPost}); 
-             }
-             else
-             {
-              response.render('chatter',{errors});
-             }
-           })
-           .catch((postResult)=>{
-           response.send(postResult);
-           })
-                
-                })
-                 
-           
 
 //dashboard
 router.get('/dash', function(req, res) {
