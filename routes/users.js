@@ -228,11 +228,11 @@ contactQueryError) => {
                                       {
                                        let body = request.body;
                                        console.log('body  '+JSON.stringify(body));
-                                       let { name, content} = request.body;
+                                       let { name, content, secure_url} = request.body;
                                        let errors =[];
                                        await
                                        pool
-                                      .query('INSERT into salesforce.Post__c (name, content__c, Posted_By__c ) values ($1, $2, $3) returning *',[name,content,userId])
+                                      .query('INSERT into salesforce.Post__c (name, content__c, Posted_By__c, Images_URL__c ) values ($1, $2, $3, $4) returning *',[name,content,userId,secure_url])
                                       .then((postQueryResult) => {
                                       console.log('postQueryResult : '+JSON.stringify(postQueryResult));
                                                                  })

@@ -15,21 +15,20 @@
   </head>
   <div class="row mt-5">
   
-      <h3 class="text-center mb-3" style="border-color: cornflowerblue; height: 50px; width: 5%; color: darkblue; text-align: left; padding-left: 20px;">
+      <h3 class="text-center mb-3" style="border-color: cornflowerblue; height: 50px; width: 5%; color: rgb(203, 203, 221); text-align: left; padding-left: 20px;">
      Post  
       </h3>
       <form action="/users/postchatter" method="post">
    </div>
    <div class="form-group">
               <label for="name"> Name</label>
-              <input type="text" name="name" style="width: 200px; border-color: rgb(35, 173, 228);" class="form-control"  placeholder="Enter Your Name"  />
+              <input type="text" name="name" value="<%= objUser3.name %>" style="width: 200px; border-color: rgb(35, 173, 228);" class="form-control"  placeholder="Enter Your Name"  />
    </div>
    <div class="form-group">
-            <textarea name="description " style="width: 400px; padding-top: 10px; margin-top: 20px; border-color: rgb(35, 173, 228); height: 150px; " placeholder=" Share an Update" ></textarea>
-   </div>
+    <input type="text" name="content" style="width: 200px; border-color: rgb(35, 173, 228);" class="form-control"  placeholder="Share an Update"  />
+  </div>
    <input type="file" onChange="chkFile(this)" name="fileprety" id="fileprety" multiple="false" class="form-control" />
    <input type="hidden" value="NoFile" name="imgpath" id="file"><br/>  
-   <button type="submit" class="btn btn-info" style="width: 150px; ">Preview</button>     
    <button type="submit" class="btn btn-info" style="width: 150px; ">Share</button>     
       </form>
       <script>
@@ -63,16 +62,15 @@
         }
     
     </script>
-      
-
-    
-         <div class="container" style="padding-top: 20px;">
-            <div  class="box" style="border: 1px solid rgb(22, 143, 190); padding-top: 70px; "> <%= objPost.name %> </div>
-            </br>
-            <div  class="box" style="border: 1px solid rgb(22, 143, 190); padding-top: 70px; "> <%= objPost.content__c %> </div>
+         <% for(var i = 0; i < objPost.rows; i++) { %>
+          <div class="container" style="padding-top: 20px;">
+            <div  class="box" style= "color: azure ; padding-top: 2px; ">
+               <%= objPost.name %> : </br>
+               <%= objPost.content__c %> 
+              </div>
           </br>
-           <div  class="box">  <button type="like" class="btn btn-info" style="width: 100px; ">Like</button> </div>
-           <div  class="box">  <button type="comment" class="btn btn-info" style="width: 100px; ">Comment</button> </div>
-           </div>
-    
- 
+        </br></br>
+          <button type="like" class="btn btn-info" style="width: auto; ">Like</button> 
+          <button type="comment" class="btn btn-info" style="width: auto; ">Comment</button>
+         </div>
+      <% } %>
