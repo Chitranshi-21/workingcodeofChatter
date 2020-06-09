@@ -1,3 +1,5 @@
+
+var socket = require('./socket.io-client')('http://localhost:8000/users/chatter', { transports: ['websocket'] })
 var message = document.getElementById('message'),
       handle = document.getElementById('handle'),
       btn = document.getElementById('send'),
@@ -18,6 +20,7 @@ message.addEventListener('keypress', function(){
 })
 
 // Listen for events
+socket.once('connect', socketConn => {
 socket.on('chat', function(data){
     feedback.innerHTML = '';
     output.innerHTML += '<p><strong>' + data.handle + ': </strong>' + data.message + '</p>';
@@ -26,3 +29,4 @@ socket.on('chat', function(data){
 socket.on('typing', function(data){
     feedback.innerHTML = '<p><em>' + data + ' is typing a message...</em></p>';
 });
+}); 
